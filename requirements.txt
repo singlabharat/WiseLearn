@@ -1,0 +1,2 @@
+google-generativeai>=0.3.0
+apify-client>=1.6.0 

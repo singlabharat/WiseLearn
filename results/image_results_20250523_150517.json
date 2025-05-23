@@ -1,0 +1,14 @@
+[
+  {
+    "query": "\"Penelope Cruz 1990s movies\"",
+    "origin": "www.imdb.com",
+    "title": "Penelope Cruz films",
+    "imageUrl": "https://m.media-amazon.com/images/M/MV5BZDFhMzVkOGEtMDA5Ni00MmQyLTk0MTEtMGQzZGU3OGVkNjViXkEyXkFqcGc@._V1_.jpg",
+    "imageWidth": 550,
+    "imageHeight": 800,
+    "thumbnailUrl": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQgqAzY4hWfWEqfVyd-UHHf0myVBgZxu1bxqQ&s",
+    "thumbnailWidth": 186,
+    "thumbnailHeight": 271,
+    "contentUrl": "https://www.imdb.com/list/ls567952617/"
+  }
+]
