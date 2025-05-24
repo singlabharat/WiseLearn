@@ -9,7 +9,8 @@ from gemini_teacher import (
     compare_user_summary,
     extract_text_from_pdf,
     list_subtopics_from_text,
-    teach_topic_from_text
+    teach_topic_from_text,
+    get_youtube_videos
 )
 import google.generativeai as genai
 from config import GOOGLE_API_KEY
@@ -37,6 +38,7 @@ def allowed_file(filename):
 def get_lesson():
     data = request.form if request.files else request.json
     topic = data.get('topic', '')  # Make topic optional, default to empty string
+    learning_preference = data.get('learning_preference', 'reading')  # Add this line
     
     if not topic and not request.files:
         return jsonify({'error': 'Please provide either a topic or a PDF file'}), 400
@@ -87,7 +89,10 @@ def get_lesson():
             for subtopic in subtopics:
                 full_text += "\n" + teach_topic(subtopic)
         
-        # Process images (same for both workflows)
+        # Get relevant YouTube videos
+        videos = get_youtube_videos(topic if topic else subtopics[0])
+        
+        # Always process images regardless of learning preference
         captions = extract_image_captions(full_text)
         image_urls = []
         for caption in captions:
@@ -101,7 +106,8 @@ def get_lesson():
         return jsonify({
             'subtopics': subtopics,
             'content': final_text,
-            'images': image_urls
+            'images': image_urls,
+            'videos': videos
         })
     except Exception as e:
         # Clean up PDF file if it exists

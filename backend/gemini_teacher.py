@@ -664,6 +664,50 @@ def teach_topic_from_text(subtopic: str, context_text: str) -> str:
         print(f"Error teaching topic from text: {e}\nCheck your API key and network connection.")
         return f"Sorry, I encountered an error while trying to teach {subtopic} using the provided text."
 
+def get_youtube_videos(topic: str) -> List[dict]:
+    """
+    Uses Apify's YouTube scraper to find relevant educational videos for a topic.
+    Returns a list of video details including title, URL, and description.
+    """
+    client = ApifyClient("apify_api_2jl6c2awATe6fMg94mKpo0hMfvVxdT24SlaY")
+
+    try:
+        # Prepare the Actor input
+        run_input = {
+            "searchQueries": [f"learn {topic} tutorial"],
+            "maxResults": 3,  # Limit to top 3 most relevant videos
+            "maxResultsShorts": 0,  # No shorts
+            "maxResultStreams": 0,  # No live streams
+            "startUrls": [],
+            "subtitlesLanguage": "any",
+            "subtitlesFormat": "srt",
+        }
+
+        print(f"Starting YouTube search for topic: {topic}")
+        
+        # Run the YouTube Scraper actor
+        run = client.actor("h7sDV53CddomktSi5").call(run_input=run_input)
+
+        # Fetch and process results
+        videos = []
+        for item in client.dataset(run["defaultDatasetId"]).iterate_items():
+            video = {
+                'title': item.get('title', 'No title available'),
+                'url': item.get('url', ''),
+                'description': item.get('description', 'No description available'),
+                'duration': item.get('duration', 'Unknown duration'),
+                'viewCount': item.get('viewCount', 0),
+                'thumbnailUrl': item.get('thumbnailUrl', '')
+            }
+            videos.append(video)
+            print(f"Found video: {video['title']}")
+
+        return videos
+
+    except Exception as e:
+        print(f"An error occurred while fetching YouTube videos: {str(e)}")
+        return []
+
 if __name__ == "__main__":
     # Example usage:
     # You can replace "Quantum Physics" with any topic you want to learn about.
