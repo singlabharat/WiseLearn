@@ -510,6 +510,159 @@ def compare_user_summary(
             ]
         }
     
+def extract_text_from_pdf(pdf_path: Union[str, Path]) -> str:
+    """
+    Extracts text from a PDF file using PyPDF2.
+    """
+    print(f"Attempting to extract text from PDF: {pdf_path}")
+    text = ""
+    try:
+        # Import PyPDF2 here to catch import errors
+        import PyPDF2
+        print("Successfully imported PyPDF2")
+        
+        with open(pdf_path, "rb") as f:
+            print("Successfully opened PDF file")
+            reader = PyPDF2.PdfReader(f)
+            print(f"Successfully created PDF reader. Number of pages: {len(reader.pages)}")
+            
+            if reader.is_encrypted:
+                try:
+                    reader.decrypt('') # Try with an empty password first
+                    print("Successfully decrypted PDF")
+                except Exception as e:
+                    print(f"Could not decrypt PDF {pdf_path}: {e}. You may need to provide a password.")
+                    return ""
+
+            for page_num in range(len(reader.pages)):
+                print(f"Processing page {page_num + 1}")
+                page = reader.pages[page_num]
+                page_text = page.extract_text() or ""
+                text += page_text
+                print(f"Page {page_num + 1} text length: {len(page_text)}")
+                
+        if not text.strip():
+            print(f"Warning: No text could be extracted from {pdf_path}. The PDF might be image-based or empty.")
+        else:
+            print(f"Successfully extracted {len(text)} characters of text")
+        return text
+    except ImportError as e:
+        print(f"Error importing PyPDF2: {e}. Please ensure PyPDF2 is installed.")
+        return ""
+    except FileNotFoundError:
+        print(f"Error: PDF file not found at {pdf_path}")
+        return ""
+    except Exception as e:
+        print(f"An error occurred during PDF text extraction from {pdf_path}: {e}")
+        print(f"Error type: {type(e)}")
+        import traceback
+        print(f"Full traceback: {traceback.format_exc()}")
+        return ""
+
+def list_subtopics_from_text(text_content: str, topic: str, depth: str = "briefly") -> List[str]:
+    """
+    Ask Gemini for an array of sub-topics tailored to the requested depth,
+    derived from the provided text_content.
+
+    depth:
+        "briefly"  -> 3 sub-topics
+        "thorough" -> 7 sub-topics
+        "advanced" -> 10 sub-topics
+    Returns a Python list of strings.
+    """
+    depth_map = {"briefly": 3, "thorough": 7, "advanced": 10}
+    n = depth_map.get(depth.lower(), 3)
+
+    topic_guidance = f"about the main topic: **{topic}**" if topic else "based on the content of the document"
+
+    prompt = f"""
+    You are a curriculum architect.
+    You have been provided with text content from a document {topic_guidance}.
+    • Task: Based *only* on the provided **Text Content**, identify and list **{n}** logically sequenced sub-topics.
+    • Focus: The sub-topics must be directly covered in the **Text Content**. Do not invent sub-topics not present in the text.
+    • Output rules (very important):
+        1. Respond **only** with a valid JSON array of strings.
+        2. No numbering, no extra prose, just something like:
+           ["Sub-topic A from text", "Sub-topic B from text", ...]
+
+    **Text Content (first 8000 characters):**
+    ---
+    {text_content[:8000]}
+    ---
+    """
+    # Truncate text_content if it's too long for the prompt
+
+    try:
+        response = model.generate_content(prompt)
+        print(f"Raw API response for subtopics from text: {response.text}")
+
+        text_to_parse = response.text.strip()
+
+        if text_to_parse.startswith("```json"):
+            first_newline = text_to_parse.find('\n')
+            if first_newline != -1:
+                text_to_parse = text_to_parse[first_newline+1:]
+            else:
+                text_to_parse = text_to_parse[len("```json"):]
+
+        if text_to_parse.endswith("```"):
+            text_to_parse = text_to_parse[:-3]
+
+        text_to_parse = text_to_parse.strip()
+        subtopics = json.loads(text_to_parse)
+        return subtopics
+    except Exception as e:
+        print(f"Error extracting subtopics from text: {e}")
+        return []
+
+def teach_topic_from_text(subtopic: str, context_text: str) -> str:
+    """
+    Generates an engaging lesson on `subtopic` using `context_text` as the primary
+    source of information. It can insert image descriptors where helpful.
+    """
+    prompt = f"""
+    You are an expert teacher and visual storyteller, tasked with explaining a specific subtopic
+    based *primarily* on the provided **Contextual Text**.
+
+    ➡️ **Contextual Text (Primary Source for your explanation):**
+    ---
+    {context_text[:8000]}
+    ---
+
+    ➡️ **Task**
+    Explain the **{subtopic}** in a lively, analogy-driven way, drawing heavily from the
+    **Contextual Text** provided above. Ensure your explanation aligns with the information
+    available in the text.
+    Insert an image descriptor **only** where a picture will materially enhance
+    understanding (e.g., a diagram, chart, or photo that clarifies the point made in the text).
+    The image should be something that can be conceptually found in or is directly related to the **Contextual Text**.
+    Wrap that descriptor precisely like this:
+
+    [image_descriptor_start]
+    A URL search string for an image that will help explain the subtopic, based on the Contextual Text.
+    This description should be only 5 words or less.
+    Make it an easy diagram/image to be found and not something niche or super specific.
+    [image_descriptor_end]
+
+    Do **not** supply links or any other text inside the brackets.
+    Skip the bracket block entirely if an image would not add value or if the Contextual Text does not provide enough information to warrant one.
+    You can use multiple images if the Contextual Text supports this.
+
+    ➡️ **Structure (adapt as needed based on the Contextual Text for the subtopic)**
+    1. Open with a hook-analogy (if appropriate and supportable by text).
+    2. Build the core concepts step-by-step, referencing or paraphrasing the Contextual Text.
+    3. Explore deeper insights + common pitfalls, if the Contextual Text covers them.
+
+    Now teach me about **{subtopic}** using the provided **Contextual Text**.
+    """
+    # Truncate context_text if it's too long for the prompt
+
+    try:
+        response = model.generate_content(prompt)
+        return response.text
+    except Exception as e:
+        print(f"Error teaching topic from text: {e}\nCheck your API key and network connection.")
+        return f"Sorry, I encountered an error while trying to teach {subtopic} using the provided text."
 
 if __name__ == "__main__":
     # Example usage:
