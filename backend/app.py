@@ -1,6 +1,13 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from gemini_teacher import teach_topic, list_subtopics, extract_image_captions, scrape_images, replace_descriptors_with_urls
+from gemini_teacher import (
+    teach_topic, 
+    list_subtopics, 
+    extract_image_captions, 
+    scrape_images, 
+    replace_descriptors_with_urls,
+    compare_user_summary
+)
 import google.generativeai as genai
 from config import GOOGLE_API_KEY
 
@@ -42,6 +49,23 @@ def get_lesson():
             'content': final_text,
             'images': image_urls
         })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/compare', methods=['POST'])
+def handle_comparison():
+    data = request.json
+    original_content = data.get('original_content')
+    user_summary = data.get('user_summary')
+    previous_feedback = data.get('previous_feedback')  # Get previous feedback if it exists
+
+    if not original_content or not user_summary:
+        return jsonify({'error': 'Both original content and user summary are required'}), 400
+
+    try:
+        # Pass previous feedback to the comparison function
+        result = compare_user_summary(original_content, user_summary, previous_feedback)
+        return jsonify(result)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 

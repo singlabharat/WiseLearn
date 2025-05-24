@@ -367,6 +367,150 @@ def gemini_tts(text: str, outfile: str = "speech.wav",
 
     return os.path.abspath(outfile)
 
+def compare_user_summary(
+    llm_output: str,
+    user_input: str,
+    previous_feedback: dict = None
+) -> dict:
+    """
+    Compares the user's summary against the original LLM output and returns a structured response.
+    If previous feedback exists, it checks if those improvement points have been addressed.
+    Once all points are addressed, it provides a congratulatory message.
+    """
+    if previous_feedback and previous_feedback.get("missing_points", []):
+        # Check if previous points of improvement have been addressed
+        prompt = f"""
+        You are an expert learning coach reviewing a student's revised summary.
+        Check if the following points that needed improvement have now been addressed.
+
+        Original Text:
+        ---
+        {llm_output}
+        ---
+
+        Student's New Summary:
+        ---
+        {user_input}
+        ---
+
+        Previous Points to Improve:
+        {json.dumps(previous_feedback["missing_points"], indent=2)}
+
+        Task:
+        1. Check each previous point that needed improvement
+        2. Remove points that have now been adequately addressed
+        3. Keep points that still need work
+
+        If ALL points have been addressed, respond with:
+        {{
+            "correct_points": [
+                "Excellent work! You've successfully addressed all the previous points.",
+                "Your understanding is now complete and accurate."
+            ],
+            "missing_points": []
+        }}
+
+        If some points remain, respond with:
+        {{
+            "correct_points": [
+                "Good progress! You've improved on some points.",
+                "Keep working on the remaining areas."
+            ],
+            "missing_points": [
+                "only include points from the original list that still need work"
+            ]
+        }}
+
+        Ensure the response is a valid JSON object with these exact keys.
+        """
+    else:
+        # First-time evaluation
+        prompt = f"""
+        You are an expert learning coach analyzing a student's summary.
+        Your task is to compare their summary against the original text and provide structured feedback.
+
+        Original Text:
+        ---
+        {llm_output}
+        ---
+
+        Student's Summary:
+        ---
+        {user_input}
+        ---
+
+        First, evaluate if the summary demonstrates excellent understanding. A summary is excellent if it:
+        1. Captures all main points accurately
+        2. Shows clear comprehension of core concepts
+        3. Includes key details without significant omissions
+
+        If the summary is excellent, respond with:
+        {{
+            "correct_points": [
+                "Excellent understanding! You've captured all the key points accurately.",
+                "Your summary demonstrates thorough comprehension of the material."
+            ],
+            "missing_points": []
+        }}
+
+        Otherwise, respond with:
+        {{
+            "correct_points": [
+                "Points you've understood well",
+                "Other strong aspects of your summary"
+            ],
+            "missing_points": [
+                "Specific concepts or details to add or clarify",
+                "Areas where more depth would be helpful"
+            ]
+        }}
+
+        Rules:
+        1. If the summary is excellent, use the positive-only format
+        2. Otherwise, be specific about what needs improvement
+        3. Keep feedback constructive and actionable
+        4. Include 2-4 points in each category
+        5. Make points concise and clear
+        """
+
+    try:
+        response = model.generate_content(prompt)
+        response_text = response.text.strip()
+        
+        # Remove any markdown code block indicators if present
+        if response_text.startswith("```json"):
+            response_text = response_text[7:]
+        if response_text.startswith("```"):
+            response_text = response_text[3:]
+        if response_text.endswith("```"):
+            response_text = response_text[:-3]
+        
+        response_text = response_text.strip()
+        
+        # Parse the JSON response
+        feedback = json.loads(response_text)
+        
+        # Validate the structure
+        if not isinstance(feedback, dict):
+            raise ValueError("Response is not a dictionary")
+        if "correct_points" not in feedback or "missing_points" not in feedback:
+            raise ValueError("Response missing required keys")
+        if not isinstance(feedback["correct_points"], list) or not isinstance(feedback["missing_points"], list):
+            raise ValueError("Points must be arrays")
+            
+        return feedback
+        
+    except Exception as e:
+        print(f"Error in compare_user_summary: {str(e)}")
+        print(f"Raw response: {response.text if 'response' in locals() else 'No response'}")
+        return {
+            "correct_points": [],
+            "missing_points": [
+                "Unable to analyze the summary. The system encountered an error. Please try submitting your summary again."
+            ]
+        }
+    
+
 if __name__ == "__main__":
     # Example usage:
     # You can replace "Quantum Physics" with any topic you want to learn about.
