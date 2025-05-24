@@ -22,7 +22,14 @@ import {
   CardActions,
   Collapse,
   Tabs,
-  Tab
+  Tab,
+  RadioGroup,
+  FormControlLabel,
+  Radio,
+  FormControl,
+  FormLabel,
+  Snackbar,
+  Alert as MuiAlert
 } from '@mui/material';
 import { 
   School as SchoolIcon, 
@@ -36,7 +43,9 @@ import {
   ExpandMore as ExpandMoreIcon,
   PlayArrow as PlayArrowIcon,
   MenuBook as MenuBookIcon,
-  QuestionAnswer as QuestionAnswerIcon
+  QuestionAnswer as QuestionAnswerIcon,
+  QuestionMark as QuestionMarkIcon,
+  Close as CloseIcon
 } from '@mui/icons-material';
 import axios from 'axios';
 
@@ -53,6 +62,13 @@ function App() {
   const [showVideos, setShowVideos] = useState(false);
   const [learningPreference, setLearningPreference] = useState('reading');
   const [activeTab, setActiveTab] = useState('content');
+  const [activeQuestion, setActiveQuestion] = useState(0);
+  const [quizAnswers, setQuizAnswers] = useState({});
+  const [currentFeedback, setCurrentFeedback] = useState(null);
+  const [showFeedback, setShowFeedback] = useState(false);
+  const [quizLoading, setQuizLoading] = useState(false);
+  const [quizError, setQuizError] = useState('');
+  const [quizData, setQuizData] = useState(null);
   const theme = useTheme();
 
   // Helper function to process text with bold markers
@@ -88,6 +104,8 @@ function App() {
     setComparison(null);
     setPreviousFeedback(null);
     setUserSummary('');
+    setQuizData(null);
+    setQuizError('');
 
     // Validate that either topic or PDF is provided
     if (!topic && !pdfFile) {
@@ -151,6 +169,55 @@ function App() {
       setError('Failed to compare summaries. Please try again.');
     } finally {
       setSummaryLoading(false);
+    }
+  };
+
+  const handleAnswerSubmit = async (type, questionIndex, answer) => {
+    try {
+      const questionData = type === 'multiple_choice' 
+        ? content.quiz.multiple_choice[questionIndex]
+        : content.quiz.short_answer[questionIndex];
+
+      const response = await axios.post('http://localhost:5000/api/check-answer', {
+        type,
+        questionIndex,
+        answer,
+        correctAnswer: questionData.correct_answer,
+        keywords: type === 'short_answer' ? questionData.keywords : undefined,
+        explanation: questionData.explanation
+      });
+
+      setQuizAnswers(prev => ({
+        ...prev,
+        [`${type}_${questionIndex}`]: {
+          answer,
+          ...response.data
+        }
+      }));
+
+      setCurrentFeedback(response.data);
+      setShowFeedback(true);
+    } catch (err) {
+      setError('Failed to check answer. Please try again.');
+    }
+  };
+
+  const generateQuiz = async () => {
+    if (!content?.content) return;
+    
+    setQuizLoading(true);
+    setQuizError('');
+    
+    try {
+      const response = await axios.post('http://localhost:5000/api/generate-quiz', {
+        content: content.content
+      });
+      console.log('Quiz response:', response.data);
+      setQuizData(response.data.quiz);
+    } catch (err) {
+      setQuizError(err.response?.data?.error || 'Failed to generate quiz');
+    } finally {
+      setQuizLoading(false);
     }
   };
 
@@ -433,6 +500,285 @@ function App() {
     );
   };
 
+  const renderQuizTab = () => {
+    if (!content) return null;
+
+    if (quizLoading) {
+      return (
+        <Box mt={2} display="flex" justifyContent="center">
+          <CircularProgress />
+        </Box>
+      );
+    }
+
+    if (quizError) {
+      return (
+        <Box mt={2}>
+          <Alert 
+            severity="error"
+            action={
+              <Button 
+                color="inherit" 
+                size="small" 
+                onClick={generateQuiz}
+                disabled={quizLoading}
+              >
+                Try Again
+              </Button>
+            }
+          >
+            {quizError}
+          </Alert>
+        </Box>
+      );
+    }
+
+    if (!quizData) {
+      return (
+        <Box mt={2} display="flex" flexDirection="column" gap={2}>
+          <Alert 
+            severity="info" 
+            action={
+              <Button 
+                color="inherit" 
+                size="small" 
+                onClick={generateQuiz}
+                disabled={quizLoading}
+              >
+                Generate Quiz
+              </Button>
+            }
+          >
+            Click to generate a quiz for this content
+          </Alert>
+        </Box>
+      );
+    }
+
+    // Log the quiz data to see what we're receiving
+    console.log('Current quiz data:', quizData);
+
+    // Ensure we have the quiz data structure we expect
+    if (!quizData.multiple_choice || !quizData.short_answer) {
+      console.error('Quiz data is missing required sections:', quizData);
+      return (
+        <Box mt={2}>
+          <Alert 
+            severity="error"
+            action={
+              <Button 
+                color="inherit" 
+                size="small" 
+                onClick={generateQuiz}
+                disabled={quizLoading}
+              >
+                Try Again
+              </Button>
+            }
+          >
+            Quiz data is not in the correct format. Please try again.
+          </Alert>
+        </Box>
+      );
+    }
+
+    const multiple_choice = quizData.multiple_choice;
+    const short_answer = quizData.short_answer;
+    const totalQuestions = multiple_choice.length + short_answer.length;
+
+    
+    if (totalQuestions === 0) {
+      return (
+        <Box mt={2}>
+          <Alert 
+            severity="warning"
+            action={
+              <Button 
+                color="inherit" 
+                size="small" 
+                onClick={generateQuiz}
+                disabled={quizLoading}
+              >
+                Try Again
+              </Button>
+            }
+          >
+            No quiz questions were generated. Click "Try Again" to make another attempt.
+          </Alert>
+        </Box>
+      );
+    }
+
+    const isMultipleChoice = activeQuestion < multiple_choice.length;
+    const currentQuestion = isMultipleChoice 
+      ? multiple_choice[activeQuestion]
+      : short_answer[activeQuestion - multiple_choice.length];
+
+    const questionType = isMultipleChoice ? 'multiple_choice' : 'short_answer';
+    const answerKey = `${questionType}_${isMultipleChoice ? activeQuestion : activeQuestion - multiple_choice.length}`;
+    const currentAnswer = quizAnswers[answerKey];
+
+    return (
+      <Box mt={2}>
+        <Card elevation={3} sx={{ borderRadius: 2, mb: 2 }}>
+          <CardContent>
+            <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+              <Typography variant="h6" color="primary">
+                Question {activeQuestion + 1} of {totalQuestions}
+              </Typography>
+              <Box>
+                <Button
+                  disabled={activeQuestion === 0}
+                  onClick={() => setActiveQuestion(prev => prev - 1)}
+                  sx={{ mr: 1 }}
+                >
+                  Previous
+                </Button>
+                <Button
+                  disabled={activeQuestion === totalQuestions - 1}
+                  onClick={() => setActiveQuestion(prev => prev + 1)}
+                >
+                  Next
+                </Button>
+              </Box>
+            </Box>
+
+            <Typography variant="h6" gutterBottom>
+              {currentQuestion.question}
+            </Typography>
+
+            {isMultipleChoice ? (
+              <FormControl component="fieldset" sx={{ width: '100%' }}>
+                <RadioGroup
+                  value={currentAnswer?.answer || ''}
+                  onChange={(e) => {
+                    if (!currentAnswer) {
+                      handleAnswerSubmit(questionType, activeQuestion, e.target.value);
+                    }
+                  }}
+                >
+                  {currentQuestion.options?.map((option, index) => (
+                    <FormControlLabel
+                      key={index}
+                      value={option}
+                      control={<Radio />}
+                      label={option}
+                      disabled={currentAnswer !== undefined}
+                      sx={{
+                        backgroundColor: currentAnswer?.isCorrect && currentAnswer.answer === option
+                          ? alpha(theme.palette.success.main, 0.1)
+                          : currentAnswer?.answer === option && !currentAnswer.isCorrect
+                          ? alpha(theme.palette.error.main, 0.1)
+                          : 'transparent',
+                        borderRadius: 1,
+                        my: 0.5,
+                        px: 1
+                      }}
+                    />
+                  ))}
+                </RadioGroup>
+              </FormControl>
+            ) : (
+              <Box>
+                <TextField
+                  fullWidth
+                  multiline
+                  rows={3}
+                  variant="outlined"
+                  placeholder="Type your answer here..."
+                  disabled={currentAnswer !== undefined}
+                  value={currentAnswer?.answer || ''}
+                  onChange={(e) => {
+                    const newAnswers = { ...quizAnswers };
+                    if (!newAnswers[answerKey]) {
+                      newAnswers[answerKey] = { answer: e.target.value };
+                      setQuizAnswers(newAnswers);
+                    }
+                  }}
+                  sx={{ mb: 2 }}
+                />
+                {!currentAnswer && (
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    onClick={() => handleAnswerSubmit(
+                      questionType,
+                      activeQuestion - multiple_choice.length,
+                      quizAnswers[answerKey]?.answer || ''
+                    )}
+                    disabled={!quizAnswers[answerKey]?.answer}
+                  >
+                    Submit Answer
+                  </Button>
+                )}
+              </Box>
+            )}
+
+            {currentAnswer && (
+              <Alert
+                severity={currentAnswer.isCorrect ? "success" : "warning"}
+                sx={{ mt: 2 }}
+              >
+                {currentAnswer.feedback}
+              </Alert>
+            )}
+          </CardContent>
+        </Card>
+
+        <Box display="flex" justifyContent="center">
+          <Paper elevation={3} sx={{ p: 2, borderRadius: 2, display: 'inline-flex', gap: 2 }}>
+            {[...Array(totalQuestions)].map((_, index) => {
+              const qType = index < multiple_choice.length ? 'multiple_choice' : 'short_answer';
+              const qIndex = index < multiple_choice.length ? index : index - multiple_choice.length;
+              const answer = quizAnswers[`${qType}_${qIndex}`];
+              
+              return (
+                <Box
+                  key={index}
+                  onClick={() => setActiveQuestion(index)}
+                  sx={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    backgroundColor: answer
+                      ? answer.isCorrect
+                        ? alpha(theme.palette.success.main, 0.1)
+                        : alpha(theme.palette.error.main, 0.1)
+                      : activeQuestion === index
+                      ? alpha(theme.palette.primary.main, 0.1)
+                      : 'transparent',
+                    border: `2px solid ${
+                      answer
+                        ? answer.isCorrect
+                          ? theme.palette.success.main
+                        : theme.palette.error.main
+                        : activeQuestion === index
+                        ? theme.palette.primary.main
+                        : theme.palette.grey[300]
+                    }`,
+                    color: answer
+                      ? answer.isCorrect
+                        ? theme.palette.success.main
+                        : theme.palette.error.main
+                      : activeQuestion === index
+                      ? theme.palette.primary.main
+                      : theme.palette.grey[600]
+                  }}
+                >
+                  {index + 1}
+                </Box>
+              );
+            })}
+          </Paper>
+        </Box>
+      </Box>
+    );
+  };
+
   const renderContent = () => {
     if (!content) return null;
 
@@ -505,12 +851,19 @@ function App() {
                 label="Summary"
                 value="summary"
               />
+              <Tab 
+                icon={<QuestionMarkIcon />}
+                iconPosition="start"
+                label="Quiz"
+                value="quiz"
+              />
             </Tabs>
           </Box>
 
           {/* Tab Content */}
           {activeTab === 'content' && renderContentTab()}
           {activeTab === 'summary' && renderSummaryTab()}
+          {activeTab === 'quiz' && renderQuizTab()}
         </Box>
       </Fade>
     );
@@ -723,6 +1076,21 @@ function App() {
 
         {renderContent()}
       </Container>
+      <Snackbar
+        open={showFeedback}
+        autoHideDuration={6000}
+        onClose={() => setShowFeedback(false)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <MuiAlert
+          elevation={6}
+          variant="filled"
+          severity={currentFeedback?.isCorrect ? "success" : "warning"}
+          onClose={() => setShowFeedback(false)}
+        >
+          {currentFeedback?.feedback}
+        </MuiAlert>
+      </Snackbar>
     </Box>
   );
 }

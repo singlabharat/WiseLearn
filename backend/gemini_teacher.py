@@ -708,6 +708,62 @@ def get_youtube_videos(topic: str) -> List[dict]:
         print(f"An error occurred while fetching YouTube videos: {str(e)}")
         return []
 
+def generate_quiz(content: str) -> dict:
+    """
+    Generates a mix of multiple choice and short answer questions based on the content.
+    Returns a structured quiz with questions, answers, and explanations.
+    """
+    prompt = f"""
+    You are an expert teacher creating a quiz to test understanding of the following content.
+    Create a mix of multiple choice and short answer questions.
+
+    Content to quiz on:
+    ---
+    {content}
+    ---
+
+    Create a quiz with:
+    - 3 multiple choice questions (4 options each)
+    - 2 short answer questions
+
+    Respond with ONLY a valid JSON object in this exact format:
+    {{
+        "multiple_choice": [
+            {{
+                "question": "The question text",
+                "options": ["A) option 1", "B) option 2", "C) option 3", "D) option 4"],
+                "correct_answer": "A) option 1",
+                "explanation": "Brief explanation of why this is correct"
+            }}
+        ],
+        "short_answer": [
+            {{
+                "question": "The question text",
+                "correct_answer": "The expected answer",
+                "keywords": ["key1", "key2"],
+                "explanation": "Brief explanation of the answer"
+            }}
+        ]
+    }}
+
+    Make sure:
+    1. Multiple choice questions are challenging but fair
+    2. Short answer questions can be answered in 1-2 sentences
+    3. Keywords for short answers help identify partially correct responses
+    4. All questions test understanding, not just memorization
+    """
+
+    try:
+        response = model.generate_content(prompt)
+        quiz_data = json.loads(response.text)
+        return quiz_data
+    except Exception as e:
+        print(f"Error generating quiz: {e}")
+        return {
+            "multiple_choice": [],
+            "short_answer": []
+        }
+
 if __name__ == "__main__":
     # Example usage:
     # You can replace "Quantum Physics" with any topic you want to learn about.

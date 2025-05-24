@@ -10,7 +10,8 @@ from gemini_teacher import (
     extract_text_from_pdf,
     list_subtopics_from_text,
     teach_topic_from_text,
-    get_youtube_videos
+    get_youtube_videos,
+    generate_quiz
 )
 import google.generativeai as genai
 from config import GOOGLE_API_KEY
@@ -37,8 +38,8 @@ def allowed_file(filename):
 @app.route('/api/teach', methods=['POST'])
 def get_lesson():
     data = request.form if request.files else request.json
-    topic = data.get('topic', '')  # Make topic optional, default to empty string
-    learning_preference = data.get('learning_preference', 'reading')  # Add this line
+    topic = data.get('topic', '')
+    learning_preference = data.get('learning_preference', 'reading')
     
     if not topic and not request.files:
         return jsonify({'error': 'Please provide either a topic or a PDF file'}), 400
@@ -137,6 +138,54 @@ def handle_comparison():
         return jsonify(result)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@app.route('/api/check-answer', methods=['POST'])
+def check_answer():
+    data = request.json
+    answer_type = data.get('type')  # 'multiple_choice' or 'short_answer'
+    question_index = data.get('questionIndex')
+    user_answer = data.get('answer')
+    correct_answer = data.get('correctAnswer')
+    keywords = data.get('keywords', [])  # Only for short answer questions
+    explanation = data.get('explanation', '')
+
+    try:
+        if answer_type == 'multiple_choice':
+            is_correct = user_answer == correct_answer
+            feedback = explanation if is_correct else f"Incorrect. The correct answer was: {correct_answer}. {explanation}"
+        else:  # short_answer
+            # Check if the answer contains the required keywords
+            user_answer_lower = user_answer.lower()
+            matched_keywords = [keyword for keyword in keywords if keyword.lower() in user_answer_lower]
+            is_correct = len(matched_keywords) >= len(keywords) * 0.6  # 60% of keywords needed for correct
+            
+            if is_correct:
+                feedback = f"Good answer! {explanation}"
+            else:
+                missing_concepts = [k for k in keywords if k.lower() not in user_answer_lower]
+                feedback = f"Your answer could be improved by including concepts like: {', '.join(missing_concepts)}. {explanation}"
+
+        return jsonify({
+            'isCorrect': is_correct,
+            'feedback': feedback
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/generate-quiz', methods=['POST'])
+def generate_quiz_endpoint():
+    data = request.json
+    content = data.get('content')
+    
+    if not content:
+        return jsonify({'error': 'Content is required to generate quiz'}), 400
+        
+    try:
+        quiz = generate_quiz(content)
+        return jsonify({'quiz': quiz})
+    except Exception as e:
+        print(f"Error generating quiz: {str(e)}")
+        return jsonify({'error': f'Failed to generate quiz: {str(e)}'}), 500
 
 if __name__ == '__main__':
     app.run(debug=True) 
