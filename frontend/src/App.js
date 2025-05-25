@@ -55,13 +55,48 @@ function App() {
   const [showVideos, setShowVideos] = useState(false);
   const [learningPreference, setLearningPreference] = useState('reading');
   const [activeTab, setActiveTab] = useState('content');
+  const [revisionTopics, setRevisionTopics] = useState([]);
   const theme = useTheme();
+
+  const clearRevisionTopics = () => {
+    setRevisionTopics([]);
+  };
 
   // Function to navigate to the chat page
   const navigateToChat = () => {
+      // Reset chat-specific states for a new session
+    setTopic('');
+    setContent(null);
+    setUserSummary('');
+    setComparison(null);
+    setPreviousFeedback(null);
+    setPdfFile(null);
+    setActiveTab('content');
+    setError(''); // Clear any previous errors
+    setLoading(false); // Ensure main loading is reset
+    setSummaryLoading(false); // Ensure summary loading is reset
     setCurrentPage('chat');
   };
-
+  const navigateToChatWithState = (chatState) => {
+    // Restore main content and settings from the selected revision
+    setTopic(chatState.topic);
+    setContent(chatState.content);
+    setPdfFile(chatState.pdfFile);
+    setLearningPreference(chatState.learningPreference);
+    setActiveTab(chatState.activeTab); // Or default to 'content' if preferred when revising
+  
+    // Reset summary-specific states for a fresh summarization experience
+    setUserSummary(''); // Clear previous summary text
+    setComparison(null); // Clear previous comparison results/feedback
+    setPreviousFeedback(null); // Ensure no carry-over of feedback for the new summary attempt
+    
+    // Reset operational states for a clean chat environment
+    setError('');
+    setLoading(false);
+    setSummaryLoading(false);
+  
+    setCurrentPage('chat');
+  };
   // Helper function to process text with bold markers
   const processBoldText = (text) => {
     if (!text) return [];
@@ -154,6 +189,59 @@ function App() {
       });
       setComparison(response.data);
       setPreviousFeedback(response.data);  // Store the feedback for next comparison
+            // ... (inside handleSummarySubmit, after setPreviousFeedback(response.data);)
+
+            if (response.data) {
+              const topicName = topic || (pdfFile && pdfFile.name) || 'Unnamed Topic';
+              const currentTime = Date.now();
+              const currentDateString = new Date(currentTime).toLocaleDateString();
+      
+              setRevisionTopics(prevTopics => {
+                const existingTopicIndex = prevTopics.findIndex(rt => rt.name === topicName);
+                let updatedTopics;
+      
+                if (existingTopicIndex !== -1) {
+                  // Update existing topic
+                  updatedTopics = prevTopics.map((rt, index) => 
+                    index === existingTopicIndex 
+                    ? { 
+                        ...rt, 
+                        id: currentTime, // Update timestamp for sorting
+                        date: currentDateString, // Update display date
+                        chatState: {
+                          topic,
+                          content,
+                          userSummary, // Make sure to save the current userSummary
+                          comparison: response.data,
+                          pdfFile,
+                          learningPreference,
+                          activeTab,
+                        } 
+                      } 
+                    : rt
+                  );
+                } else {
+                  // Add new topic
+                  const newRevisionTopic = {
+                    id: currentTime, // Use current timestamp
+                    name: topicName,
+                    date: currentDateString, // Use current display date
+                    chatState: {
+                      topic,
+                      content,
+                      userSummary, // Make sure to save the current userSummary
+                      comparison: response.data,
+                      pdfFile,
+                      learningPreference,
+                      activeTab,
+                    }
+                  };
+                  updatedTopics = [...prevTopics, newRevisionTopic];
+                }
+                // Sort topics by id (timestamp) in ascending order (oldest first)
+                return updatedTopics.sort((a, b) => a.id - b.id);
+              });
+            }
     } catch (err) {
       setError('Failed to compare summaries. Please try again.');
     } finally {
@@ -567,7 +655,12 @@ function App() {
 
   // Conditional rendering based on currentPage
   if (currentPage === 'dashboard') {
-    return <Dashboard onNavigateToChat={navigateToChat} />;
+    return <Dashboard 
+              onNavigateToChat={navigateToChat} 
+              revisionTopics={revisionTopics}
+              navigateToChatWithState={navigateToChatWithState}
+              clearRevisionTopics={clearRevisionTopics}
+            />;
   }
 
   // Existing chat page content (now part of the 'chat' page view)

@@ -16,9 +16,9 @@ import {
   ListItemIcon,
   ListItemText
 } from '@mui/material';
-import { School, Book, BarChart, LocalFireDepartment, History } from '@mui/icons-material';
+import { School, Book, BarChart, LocalFireDepartment, History, EmojiEvents as EmojiEventsIcon, DeleteSweep as DeleteSweepIcon } from '@mui/icons-material';
 
-function Dashboard({ onNavigateToChat }) {
+function Dashboard({ onNavigateToChat, revisionTopics, navigateToChatWithState, clearRevisionTopics }) {
   const user = {
     name: 'Alex Johnson',
     avatar: 'AJ', // Placeholder for avatar, could be an image URL
@@ -27,6 +27,19 @@ function Dashboard({ onNavigateToChat }) {
     subjects: ['Physics', 'Calculus', 'Literature'],
     streak: 15, // days
     avgSummaryScore: 88, // percentage
+  };
+
+  const topLearners = [
+    { id: 1, name: 'Sarah V.', streak: 25, avatar: 'SV' },
+    { id: 2, name: 'Mike L.', streak: 22, avatar: 'ML' },
+    { id: 3, name: 'Chloe R.', streak: 19, avatar: 'CR' },
+  ];
+
+  const getRankColor = (index) => {
+    if (index === 0) return 'gold';
+    if (index === 1) return 'silver';
+    if (index === 2) return '#CD7F32'; // Bronze
+    return 'action';
   };
 
   return (
@@ -84,23 +97,54 @@ function Dashboard({ onNavigateToChat }) {
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 2}}>
                     Revisit your previously learned topics to reinforce your knowledge.
                   </Typography>
-                  {/* Placeholder for previous topics list */}
-                  <List dense>
-                    <ListItem>
-                      <ListItemIcon sx={{minWidth: 'auto', mr: 1.5}}><Book fontSize="small" color="action"/></ListItemIcon>
-                      <ListItemText primary="Placeholder Topic 1" secondary="Last reviewed: 2 days ago" />
-                    </ListItem>
-                    <ListItem>
-                      <ListItemIcon sx={{minWidth: 'auto', mr: 1.5}}><Book fontSize="small" color="action"/></ListItemIcon>
-                      <ListItemText primary="Placeholder Topic 2" secondary="Last reviewed: 5 days ago" />
-                    </ListItem>
-                    <ListItem>
-                      <ListItemIcon sx={{minWidth: 'auto', mr: 1.5}}><Book fontSize="small" color="action"/></ListItemIcon>
-                      <ListItemText primary="Another Interesting Subject" secondary="Last reviewed: 1 week ago" />
-                    </ListItem>
-                  </List>
-                   <Box sx={{mt: 2, textAlign: 'right'}}>
-                     <Button size="small" variant="outlined" onClick={() => alert('Browse all revisions - coming soon!')}>
+                  {revisionTopics && revisionTopics.length > 0 ? (
+                    <List dense>
+                      {revisionTopics.map((revision) => (
+                        <ListItem 
+                          key={revision.id} 
+                          button 
+                          onClick={() => navigateToChatWithState(revision.chatState)}
+                          sx={{ 
+                            mb: 1, 
+                            borderRadius: '4px', 
+                            '&:hover': { backgroundColor: 'action.hover' }
+                          }}
+                        >
+                          <ListItemIcon sx={{minWidth: 'auto', mr: 1.5}}>
+                            <Book fontSize="small" color="action"/>
+                          </ListItemIcon>
+                          <ListItemText 
+                            primary={revision.name} 
+                            secondary={`Reviewed: ${revision.date}`}
+                          />
+                        </ListItem>
+                      ))}
+                    </List>
+                  ) : (
+                    <Typography variant="body2" color="text.secondary" sx={{mt: 2, textAlign: 'center'}}>
+                      No revision topics yet. Start a new chat and summarize it!
+                    </Typography>
+                  )}
+                   <Box sx={{mt: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                     <Button 
+                        size="small" 
+                        variant="outlined" 
+                        color="error" 
+                        startIcon={<DeleteSweepIcon />} 
+                        onClick={() => {
+                          if (window.confirm('Are you sure you want to clear all revision topics?')) {
+                            clearRevisionTopics();
+                          }
+                        }}
+                        disabled={!revisionTopics || revisionTopics.length === 0}
+                      >
+                       Clear All Revisions
+                     </Button>
+                     <Button 
+                        size="small" 
+                        variant="outlined" 
+                        onClick={() => alert('Browse all revisions - coming soon!')}
+                      >
                        View All Revisions
                      </Button>
                    </Box>
@@ -166,6 +210,27 @@ function Dashboard({ onNavigateToChat }) {
                   </Paper>
                 </Grid>
               </Grid>
+
+              <Divider sx={{ my: 2 }} />
+
+              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', color: 'info.main'}}>
+                <EmojiEventsIcon sx={{ mr: 1 }} /> Top Learners
+              </Typography>
+              <List dense>
+                {topLearners.map((learner, index) => (
+                  <ListItem key={learner.id} sx={{ py: 0.5 }}>
+                    <ListItemIcon sx={{ minWidth: 'auto', mr: 1.5 }}>
+                      <EmojiEventsIcon sx={{ color: getRankColor(index) }} />
+                    </ListItemIcon>
+                    <ListItemText 
+                      primary={`${index + 1}. ${learner.name}`}
+                      secondary={`Day Streak: ${learner.streak}`}
+                    />
+                    <Avatar sx={{ bgcolor: 'transparent', color: getRankColor(index), fontWeight: 'bold' }}>{/* Can also use learner.avatar */}</Avatar>
+                  </ListItem>
+                ))}
+              </List>
+
             </CardContent>
           </Card>
         </Grid>
