@@ -147,14 +147,14 @@ function App() {
         formData.append('pdf_file', pdfFile);
         formData.append('learning_preference', learningPreference);
         
-        response = await axios.post('http://localhost:5000/api/teach', formData, {
+        response = await axios.post('http://localhost:5001/api/teach', formData, {
           headers: {
             'Content-Type': 'multipart/form-data'
           }
         });
       } else {
         // Regular topic-only request
-        response = await axios.post('http://localhost:5000/api/teach', { 
+        response = await axios.post('http://localhost:5001/api/teach', { 
           topic,
           learning_preference: learningPreference 
         });
@@ -182,7 +182,7 @@ function App() {
     
     setSummaryLoading(true);
     try {
-      const response = await axios.post('http://localhost:5000/api/compare', {
+      const response = await axios.post('http://localhost:5001/api/compare', {
         original_content: content.content,
         user_summary: userSummary,
         previous_feedback: previousFeedback
@@ -641,7 +641,7 @@ function App() {
             {content.audio_path && (
               <Box sx={{ mt: 4, textAlign: 'center' }}>
                  <Typography variant="subtitle1" sx={{ mb:1, color: theme.palette.text.secondary}}>Listen to this lesson:</Typography>
-                <audio controls src={`http://localhost:5000${content.audio_path}`} style={{ width: '100%', maxWidth: '500px'}}>
+                <audio controls src={`http://localhost:5001${content.audio_path}`} style={{ width: '100%', maxWidth: '500px'}}>
                   Your browser does not support the audio element.
                 </audio>
               </Box>
@@ -687,7 +687,7 @@ function App() {
             }}
           >
             <SchoolIcon sx={{ fontSize: '2.8rem', mr: 1.5, color: theme.palette.secondary.main }} /> 
-            Personalized Learning Studio
+            WiseLearn Studio
           </Typography>
           <Button 
             variant="outlined"

@@ -44,11 +44,14 @@ function Dashboard({ onNavigateToChat, revisionTopics, navigateToChatWithState, 
 
   return (
     <Container maxWidth="lg" sx={{ mt: { xs: 4, md: 8 }, mb: 4 }}>
+      <Typography variant="h2" component="h1" gutterBottom sx={{ fontWeight: 'bold', textAlign: 'center', mb: {xs: 3, md: 6}, color: 'primary.main' }}>
+        WiseLearn
+      </Typography>
       <Grid container spacing={4}>
         {/* Left Half - New Topic / Call to Action & Revision Zone */}
-        <Grid item xs={12} md={6}>
-          <Grid container direction="column" spacing={3}>
-            <Grid item>
+        <Grid item xs={12} md={8}>
+          <Grid container direction="column" spacing={3} sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+            <Grid item sx={{ display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
               <Paper 
                 elevation={3} 
                 sx={{ 
@@ -57,8 +60,8 @@ function Dashboard({ onNavigateToChat, revisionTopics, navigateToChatWithState, 
                   display: 'flex', 
                   flexDirection: 'column', 
                   justifyContent: 'center', 
-                  // height: '100%', // Adjusted for two cards in this column
-                  borderRadius: 3
+                  borderRadius: 3,
+                  flexGrow: 1
                 }}
               >
                 <Typography variant="h3" component="h1" gutterBottom sx={{ fontWeight: 'bold' }}>
@@ -88,9 +91,9 @@ function Dashboard({ onNavigateToChat, revisionTopics, navigateToChatWithState, 
             </Grid>
 
             {/* Revision Zone Card */}
-            <Grid item>
-              <Card elevation={3} sx={{ borderRadius: 3 }}>
-                <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+            <Grid item sx={{ display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
+              <Card elevation={3} sx={{ borderRadius: 3, width: '100%', flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
+                <CardContent sx={{ p: { xs: 2, sm: 3 }, flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
                   <Typography variant="h5" component="div" sx={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', mb: 2, color: 'primary.dark' }}>
                     <History sx={{ mr: 1.5 }} /> Revision Zone
                   </Typography>
@@ -98,7 +101,7 @@ function Dashboard({ onNavigateToChat, revisionTopics, navigateToChatWithState, 
                     Revisit your previously learned topics to reinforce your knowledge.
                   </Typography>
                   {revisionTopics && revisionTopics.length > 0 ? (
-                    <List dense>
+                    <List dense sx={{ flexGrow: 1, overflow: 'auto' }}>
                       {revisionTopics.map((revision) => (
                         <ListItem 
                           key={revision.id} 
@@ -121,11 +124,11 @@ function Dashboard({ onNavigateToChat, revisionTopics, navigateToChatWithState, 
                       ))}
                     </List>
                   ) : (
-                    <Typography variant="body2" color="text.secondary" sx={{mt: 2, textAlign: 'center'}}>
+                    <Typography variant="body2" color="text.secondary" sx={{mt: 2, textAlign: 'center', flexGrow: 1, display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
                       No revision topics yet. Start a new chat and summarize it!
                     </Typography>
                   )}
-                   <Box sx={{mt: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                   <Box sx={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
                      <Button 
                         size="small" 
                         variant="outlined" 
@@ -155,7 +158,7 @@ function Dashboard({ onNavigateToChat, revisionTopics, navigateToChatWithState, 
         </Grid>
 
         {/* Right Half - User Profile & Stats */}
-        <Grid item xs={12} md={6}>
+        <Grid item xs={12} md={4}>
           <Card elevation={3} sx={{ height: '100%', borderRadius: 3 }}>
             <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
