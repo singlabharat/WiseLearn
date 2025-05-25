@@ -39,8 +39,10 @@ import {
   QuestionAnswer as QuestionAnswerIcon
 } from '@mui/icons-material';
 import axios from 'axios';
+import Dashboard from './Dashboard'; // Import the Dashboard component
 
 function App() {
+  const [currentPage, setCurrentPage] = useState('dashboard'); // 'dashboard' or 'chat'
   const [topic, setTopic] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -54,6 +56,11 @@ function App() {
   const [learningPreference, setLearningPreference] = useState('reading');
   const [activeTab, setActiveTab] = useState('content');
   const theme = useTheme();
+
+  // Function to navigate to the chat page
+  const navigateToChat = () => {
+    setCurrentPage('chat');
+  };
 
   // Helper function to process text with bold markers
   const processBoldText = (text) => {
@@ -250,181 +257,123 @@ function App() {
   };
 
   const renderSummaryTab = () => {
+    if (!content) return null;
     return (
       <Box mt={2}>
-        <Card 
-          elevation={3}
+        <Typography variant="h5" gutterBottom sx={{ color: theme.palette.primary.main, display: 'flex', alignItems: 'center' }}>
+          <PsychologyIcon sx={{ mr: 1 }} /> Your Summary & Feedback
+        </Typography>
+        <TextField
+          fullWidth
+          multiline
+          rows={6}
+          variant="outlined"
+          placeholder="Write your summary of the content here..."
+          value={userSummary}
+          onChange={(e) => setUserSummary(e.target.value)}
+          sx={{
+            mb: 2,
+            mt: 1,
+            bgcolor: theme.palette.background.paper,
+            borderRadius: 1,
+            '& .MuiOutlinedInput-root': {
+              '& fieldset': {
+                borderColor: theme.palette.grey[400],
+              },
+              '&:hover fieldset': {
+                borderColor: theme.palette.primary.light,
+              },
+              '&.Mui-focused fieldset': {
+                borderColor: theme.palette.primary.main,
+              },
+            },
+          }}
+        />
+        <Button 
+          variant="contained" 
+          onClick={handleSummarySubmit} 
+          disabled={summaryLoading || !userSummary.trim()}
+          startIcon={summaryLoading ? <CircularProgress size={20} color="inherit" /> : <CompareArrowsIcon />}
           sx={{ 
-            borderRadius: 2,
-            background: `linear-gradient(45deg, ${alpha(theme.palette.secondary.main, 0.05)} 0%, ${alpha(theme.palette.primary.main, 0.05)} 100%)`
+            bgcolor: theme.palette.secondary.main,
+            color: theme.palette.secondary.contrastText,
+            '&:hover': {
+              bgcolor: theme.palette.secondary.dark
+            }
           }}
         >
-          <CardContent>
-            <Box display="flex" alignItems="center" gap={2} mb={3}>
-              <PsychologyIcon 
-                sx={{ 
-                  fontSize: 40,
-                  color: theme.palette.secondary.main
-                }} 
-              />
-              <Box>
-                <Typography 
-                  variant="h5" 
-                  gutterBottom
-                  sx={{
-                    color: theme.palette.secondary.main,
-                    fontWeight: 600,
-                    mb: 0.5
-                  }}
-                >
-                  Test Your Understanding
-                </Typography>
-                <Typography 
-                  variant="body1" 
-                  sx={{ color: theme.palette.text.secondary }}
-                >
-                  Summarize the key points in your own words to check your understanding
-                </Typography>
-              </Box>
-            </Box>
+          {summaryLoading ? 'Analyzing...' : 'Compare Summary'}
+        </Button>
 
-            <TextField
-              fullWidth
-              multiline
-              rows={4}
-              variant="outlined"
-              placeholder="Write your summary here..."
-              value={userSummary}
-              onChange={(e) => setUserSummary(e.target.value)}
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  borderRadius: 2,
-                  backgroundColor: '#fff',
-                  '&:hover fieldset': {
-                    borderColor: alpha(theme.palette.secondary.main, 0.5),
-                  },
-                  '&.Mui-focused fieldset': {
-                    borderColor: theme.palette.secondary.main,
-                  }
-                }
-              }}
-            />
-            <Box mt={3} display="flex" justifyContent="flex-end">
-              <Button
-                variant="contained"
-                color="secondary"
-                disabled={!userSummary.trim() || summaryLoading}
-                onClick={handleSummarySubmit}
-                startIcon={<CompareArrowsIcon />}
-                sx={{
-                  borderRadius: 2,
-                  px: 4,
-                  py: 1.5,
-                  fontSize: '1rem',
-                  textTransform: 'none',
-                  boxShadow: theme.shadows[2],
-                  '&:hover': {
-                    transform: 'translateY(-2px)',
-                    boxShadow: theme.shadows[4]
-                  }
-                }}
-              >
-                {summaryLoading ? (
-                  <CircularProgress size={24} color="inherit" />
-                ) : (
-                  'Check Understanding'
-                )}
-              </Button>
-            </Box>
-          </CardContent>
-        </Card>
-
-        {/* Comparison Results */}
         {comparison && (
-          <Fade in={true} timeout={800}>
-            <Card 
-              elevation={3}
-              sx={{ 
-                mt: 3,
-                borderRadius: 2,
-                overflow: 'hidden',
-                border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`
-              }}
-            >
+          <Fade in={true} timeout={500}>
+            <Card sx={{ mt: 3, borderRadius: 2, boxShadow: theme.shadows[3] }}>
               <CardContent>
-                <Stack spacing={3}>
-                  {/* Well Understood Points */}
-                  {comparison.correct_points.length > 0 && (
-                    <Box>
-                      <Typography 
-                        variant="h6" 
-                        sx={{ 
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 1,
-                          color: theme.palette.success.main,
-                          fontWeight: 600,
-                          mb: 2
-                        }}
-                      >
-                        <CheckIcon /> Well Understood Concepts
-                      </Typography>
-                      <Stack spacing={1}>
-                        {comparison.correct_points.map((point, index) => (
-                          <Alert 
-                            key={index}
-                            severity="success"
-                            icon={<CheckIcon />}
-                            sx={{ 
-                              backgroundColor: alpha(theme.palette.success.main, 0.05),
-                              '& .MuiAlert-message': {
-                                color: theme.palette.success.dark
-                              }
-                            }}
-                          >
-                            {point}
-                          </Alert>
-                        ))}
-                      </Stack>
-                    </Box>
-                  )}
-
-                  {/* Points to Review */}
-                  {comparison.missing_points.length > 0 && (
-                    <Box>
-                      <Typography 
-                        variant="h6" 
-                        sx={{ 
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 1,
-                          color: theme.palette.warning.main,
-                          fontWeight: 600,
-                          mb: 2
-                        }}
-                      >
-                        <ErrorIcon /> Points to Review
-                      </Typography>
-                      <Stack spacing={1}>
-                        {comparison.missing_points.map((point, index) => (
-                          <Alert 
-                            key={index}
-                            severity="warning"
-                            icon={<ErrorIcon />}
-                            sx={{ 
-                              backgroundColor: alpha(theme.palette.warning.main, 0.05),
-                              '& .MuiAlert-message': {
-                                color: theme.palette.warning.dark
-                              }
-                            }}
-                          >
-                            {point}
-                          </Alert>
-                        ))}
-                      </Stack>
-                    </Box>
-                  )}
-                </Stack>
+                <Typography variant="h6" gutterBottom sx={{ color: theme.palette.text.primary }}>Comparison Results:</Typography>
+                {comparison.correct_points && comparison.correct_points.length > 0 && (
+                  <Box mb={2}>
+                    <Typography variant="subtitle1" sx={{ color: theme.palette.success.dark, display: 'flex', alignItems: 'center'}}>
+                      <CheckIcon sx={{ mr: 0.5, color: theme.palette.success.main }} /> Well Understood:
+                    </Typography>
+                    <Stack spacing={0.5} sx={{ pl: 2}}>
+                      {comparison.correct_points.map((point, index) => (
+                        <Chip 
+                          key={index} 
+                          label={point} 
+                          size="small"
+                          sx={{ 
+                            bgcolor: alpha(theme.palette.success.light, 0.3),
+                            color: theme.palette.success.dark,
+                            justifyContent: 'flex-start',
+                            paddingLeft: '8px',
+                            height: 'auto',
+                            '& .MuiChip-label': {
+                              whiteSpace: 'normal',
+                              textOverflow: 'clip'
+                            }
+                          }}
+                        />
+                      ))}
+                    </Stack>
+                  </Box>
+                )}
+                {comparison.missing_points && comparison.missing_points.length > 0 && (
+                  <Box>
+                    <Typography variant="subtitle1" sx={{ color: theme.palette.error.dark, display: 'flex', alignItems: 'center' }}>
+                      <ErrorIcon sx={{ mr: 0.5, color: theme.palette.error.main }} /> Areas to Improve:
+                    </Typography>
+                    <Stack spacing={0.5} sx={{ pl: 2}}>
+                      {comparison.missing_points.map((point, index) => (
+                        <Chip 
+                          key={index} 
+                          label={point} 
+                          size="small"
+                          sx={{ 
+                            bgcolor: alpha(theme.palette.error.light, 0.3),
+                            color: theme.palette.error.dark,
+                            justifyContent: 'flex-start',
+                            paddingLeft: '8px',
+                            height: 'auto',
+                            '& .MuiChip-label': {
+                              whiteSpace: 'normal',
+                              textOverflow: 'clip'
+                            }
+                          }}
+                        />
+                      ))}
+                    </Stack>
+                  </Box>
+                )}
+                {comparison.correct_points?.length === 2 && comparison.correct_points[0].startsWith("Excellent work!") && (
+                     <Alert severity="success" sx={{ mt: 2 }}>
+                        Congratulations! You've mastered this section. Feel free to explore another topic or dive deeper!
+                    </Alert>
+                )}
+                 {comparison.correct_points?.length === 2 && comparison.correct_points[0].startsWith("Excellent understanding!") && (
+                     <Alert severity="success" sx={{ mt: 2 }}>
+                        Great job! Your summary is complete and accurate. Ready for the next challenge?
+                    </Alert>
+                )}
               </CardContent>
             </Card>
           </Fade>
@@ -433,297 +382,313 @@ function App() {
     );
   };
 
-  const renderContent = () => {
-    if (!content) return null;
+  const renderVideoTab = () => {
+    if (!content || !content.videos || content.videos.length === 0) return null;
 
     return (
-      <Fade in={true} timeout={1000}>
-        <Box mt={4}>
-          {/* Key Topics Card */}
-          <Card 
-            elevation={3}
-            sx={{
-              mb: 4,
-              background: alpha(theme.palette.primary.main, 0.03),
-              borderRadius: 2
-            }}
-          >
-            <CardContent>
-              <Box display="flex" alignItems="center" mb={2}>
-                <LightbulbIcon sx={{ color: theme.palette.primary.main, mr: 1 }} />
-                <Typography variant="h5" component="h2" color="primary">
-                  Key Topics
-                </Typography>
-              </Box>
-              <Box 
-                sx={{
-                  display: 'flex',
-                  flexWrap: 'wrap',
-                  gap: 1,
-                  mb: 2
-                }}
-              >
-                {content.subtopics.map((subtopic, index) => (
-                  <Chip
-                    key={index}
-                    label={subtopic}
-                    sx={{
-                      background: alpha(theme.palette.primary.main, 0.1),
-                      color: theme.palette.primary.main,
-                      '&:hover': {
-                        background: alpha(theme.palette.primary.main, 0.2),
-                      }
-                    }}
-                  />
-                ))}
-              </Box>
-            </CardContent>
-          </Card>
-
-          {/* Tabs */}
-          <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-            <Tabs 
-              value={activeTab} 
-              onChange={(e, newValue) => setActiveTab(newValue)}
-              sx={{
-                '& .MuiTab-root': {
-                  textTransform: 'none',
-                  fontSize: '1rem',
-                  minHeight: 48,
-                }
-              }}
-            >
-              <Tab 
-                icon={learningPreference === 'reading' ? <MenuBookIcon /> : <PlayCircleOutlineIcon />}
-                iconPosition="start"
-                label={learningPreference === 'reading' ? "Reading" : "Video"}
-                value="content"
-              />
-              <Tab 
-                icon={<QuestionAnswerIcon />}
-                iconPosition="start"
-                label="Summary"
-                value="summary"
-              />
-            </Tabs>
-          </Box>
-
-          {/* Tab Content */}
-          {activeTab === 'content' && renderContentTab()}
-          {activeTab === 'summary' && renderSummaryTab()}
-        </Box>
-      </Fade>
-    );
-  };
-
-  return (
-    <Box 
-      sx={{
-        minHeight: '100vh',
-        background: `linear-gradient(45deg, ${alpha(theme.palette.primary.main, 0.02)} 0%, ${alpha(theme.palette.secondary.main, 0.02)} 100%)`,
-        py: 4
-      }}
-    >
-      <Container maxWidth="md">
-        <Box 
-          sx={{
-            textAlign: 'center',
-            mb: 6
-          }}
-        >
-          <Box 
-            display="flex" 
-            alignItems="center" 
-            justifyContent="center"
-            mb={2}
-          >
-            <SchoolIcon 
-              sx={{ 
-                fontSize: 40, 
-                color: theme.palette.primary.main,
-                mr: 2
-              }} 
-            />
-            <Typography 
-              variant="h3" 
-              component="h1"
-              sx={{
-                fontWeight: 600,
-                background: `linear-gradient(45deg, ${theme.palette.primary.main} 30%, ${theme.palette.secondary.main} 90%)`,
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent'
-              }}
-            >
-              ChatSnap Learning
-            </Typography>
-          </Box>
-          <Typography 
-            variant="h6" 
-            color="textSecondary"
-            sx={{ 
-              maxWidth: 600, 
-              mx: 'auto',
-              mb: 4,
-              fontWeight: 300
-            }}
-          >
-            Explore any topic with AI-powered interactive lessons
-          </Typography>
-        </Box>
-        
-        <Paper 
-          elevation={3}
-          sx={{
-            borderRadius: 2,
-            overflow: 'hidden',
-            background: '#fff',
-            transition: 'transform 0.3s ease-in-out',
-            '&:hover': {
-              transform: 'translateY(-4px)'
-            }
-          }}
-        >
-          <Box p={4}>
-            <form onSubmit={handleSubmit}>
-              <TextField
-                fullWidth
-                label={pdfFile ? "What aspect of the PDF would you like to focus on? (Optional)" : "What would you like to learn about?"}
-                value={topic}
-                onChange={(e) => setTopic(e.target.value)}
-                variant="outlined"
-                disabled={loading}
-                required={!pdfFile}
-                sx={{
-                  mb: 2,
-                  '& .MuiOutlinedInput-root': {
-                    borderRadius: 2,
-                    fontSize: '1.1rem',
-                    '&.Mui-focused fieldset': {
-                      borderWidth: 2
-                    }
-                  }
-                }}
-              />
-              
-              <Box mb={3}>
-                <input
-                  accept="application/pdf"
-                  style={{ display: 'none' }}
-                  id="pdf-file-input"
-                  type="file"
-                  onChange={handleFileChange}
-                  disabled={loading}
-                />
-                <label htmlFor="pdf-file-input">
-                  <Button
-                    component="span"
-                    variant="outlined"
-                    color="primary"
-                    disabled={loading}
-                    sx={{
-                      borderRadius: 2,
-                      textTransform: 'none'
-                    }}
-                  >
-                    {pdfFile ? pdfFile.name : 'Upload PDF (Optional)'}
-                  </Button>
-                </label>
-                {pdfFile && (
-                  <Button
-                    size="small"
-                    onClick={() => setPdfFile(null)}
-                    sx={{ ml: 1 }}
-                  >
-                    Clear
-                  </Button>
-                )}
-              </Box>
-
-              {/* Add Learning Preference Selection */}
-              <Box mb={3}>
-                <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 500 }}>
-                  How would you like to learn?
-                </Typography>
-                <Stack direction="row" spacing={2} justifyContent="center">
-                  <Button
-                    variant={learningPreference === 'reading' ? 'contained' : 'outlined'}
-                    onClick={() => setLearningPreference('reading')}
-                    startIcon={<MenuBookIcon />}
-                    sx={{
-                      borderRadius: 2,
-                      textTransform: 'none',
-                      px: 3
-                    }}
-                  >
-                    Reading
-                  </Button>
-                  <Button
-                    variant={learningPreference === 'video' ? 'contained' : 'outlined'}
-                    onClick={() => setLearningPreference('video')}
-                    startIcon={<PlayCircleOutlineIcon />}
-                    sx={{
-                      borderRadius: 2,
-                      textTransform: 'none',
-                      px: 3
-                    }}
-                  >
-                    Video
-                  </Button>
-                </Stack>
-              </Box>
-
-              <Box mt={3} display="flex" justifyContent="center">
-                <Button
-                  type="submit"
-                  variant="contained"
-                  color="primary"
-                  disabled={(!topic && !pdfFile) || loading}
-                  size="large"
+      <Box mt={2}>
+        <Typography variant="h5" gutterBottom sx={{ color: theme.palette.primary.main, display: 'flex', alignItems: 'center' }}>
+            <PlayArrowIcon sx={{ mr: 1 }} /> Recommended Videos
+        </Typography>
+        <Grid container spacing={2}>
+          {content.videos.map((video, index) => (
+            <Grid item xs={12} sm={6} md={4} key={index}>
+              <Fade in={true} timeout={500 + index * 200}>
+                <Card 
+                  elevation={2} 
                   sx={{
+                    height: '100%', 
+                    display: 'flex', 
+                    flexDirection: 'column',
                     borderRadius: 2,
-                    px: 4,
-                    py: 1.5,
-                    fontSize: '1.1rem',
-                    textTransform: 'none',
-                    boxShadow: theme.shadows[4],
+                    transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
                     '&:hover': {
-                      transform: 'translateY(-2px)',
-                      boxShadow: theme.shadows[8]
+                      transform: 'translateY(-4px)',
+                      boxShadow: theme.shadows[6]
                     }
                   }}
                 >
-                  {loading ? (
-                    <CircularProgress size={24} color="inherit" />
-                  ) : (
-                    'Start Learning'
+                  {video.thumbnailUrl && (
+                    <CardMedia
+                      component="img"
+                      image={video.thumbnailUrl}
+                      alt={video.title}
+                      sx={{ height: 180, objectFit: 'cover' }}
+                    />
                   )}
-                </Button>
-              </Box>
-            </form>
+                  <CardContent sx={{ flexGrow: 1 }}>
+                    <Typography variant="subtitle1" component="div" sx={{ fontWeight: 'bold', mb: 0.5 }}>
+                      {video.title}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                      {video.duration} • {video.viewCount ? video.viewCount.toLocaleString() : 'N/A'} views
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" display="block" sx={{ maxHeight: '60px', overflow: 'hidden', textOverflow: 'ellipsis'}}>
+                      {video.description}
+                    </Typography>
+                  </CardContent>
+                  <CardActions sx={{ justifyContent: 'flex-start', p: 2, pt: 0}}>
+                    <Button 
+                      size="small" 
+                      href={video.url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      startIcon={<PlayCircleOutlineIcon />}
+                    >
+                      Watch Video
+                    </Button>
+                  </CardActions>
+                </Card>
+              </Fade>
+            </Grid>
+          ))}
+        </Grid>
+      </Box>
+    );
+  };
 
-            {error && (
-              <Typography 
-                color="error" 
-                mt={2} 
-                align="center"
-                sx={{
-                  background: alpha(theme.palette.error.main, 0.1),
-                  borderRadius: 1,
-                  p: 2,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-              >
-                {error}
-              </Typography>
+  const renderTabs = () => {
+    if (!content) return null;
+    return (
+      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
+        <Tabs 
+          value={activeTab} 
+          onChange={(event, newValue) => setActiveTab(newValue)} 
+          aria-label="content tabs"
+          indicatorColor="primary"
+          textColor="primary"
+          variant="fullWidth"
+        >
+          <Tab 
+            label="Learning Content" 
+            value="content" 
+            icon={<MenuBookIcon />} 
+            iconPosition="start"
+            sx={{ fontWeight: activeTab === 'content' ? 'bold' : 'normal' }}
+          />
+          <Tab 
+            label="Summarize & Compare" 
+            value="summary" 
+            icon={<QuestionAnswerIcon />} 
+            iconPosition="start"
+            sx={{ fontWeight: activeTab === 'summary' ? 'bold' : 'normal' }}
+            disabled={learningPreference === 'video' || !content || !content.content} 
+          />
+          {content.videos && content.videos.length > 0 && (
+            <Tab 
+              label="Watch Videos" 
+              value="video"
+              icon={<PlayArrowIcon />}
+              iconPosition="start"
+              sx={{ fontWeight: activeTab === 'video' ? 'bold' : 'normal' }}
+            />
+          )}
+        </Tabs>
+      </Box>
+    );
+  };
+
+  const renderActiveTabContent = () => {
+    switch (activeTab) {
+      case 'content':
+        return renderContentTab();
+      case 'summary':
+        return renderSummaryTab();
+      case 'video':
+        return renderVideoTab();
+      default:
+        return renderContentTab();
+    }
+  };
+
+  const renderContent = () => {
+    if (loading) {
+      return (
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '200px' }}>
+          <CircularProgress size={60} />
+          <Typography variant="h6" sx={{ ml: 2 }}>Loading your personalized lesson...</Typography>
+        </Box>
+      );
+    }
+
+    if (error && !content) { // Only show main error if no content is loaded yet
+      return <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>;
+    }
+
+    if (!content && !loading && !error) { // Initial state, before any search
+        return (
+            <Box sx={{ textAlign: 'center', mt: 4 }}>
+                <SchoolIcon sx={{ fontSize: 60, color: theme.palette.primary.main, mb: 2 }} />
+                <Typography variant="h5" color="text.secondary">
+                    Ready to learn something new?
+                </Typography>
+                <Typography variant="body1" color="text.secondary">
+                    Enter a topic or upload a PDF to get started.
+                </Typography>
+            </Box>
+        );
+    }
+
+    if (content) {
+      return (
+        <Fade in={true} timeout={800}>
+          <Box>
+            <Typography 
+              variant="h3" 
+              component="h1" 
+              gutterBottom 
+              sx={{ 
+                color: theme.palette.primary.dark,
+                fontWeight: 'bold',
+                textAlign: 'center',
+                mb: 3
+              }}
+            >
+              {content.main_topic || topic}{pdfFile ? ` (from ${pdfFile.name})` : ''}
+            </Typography>
+
+            {renderTabs()}
+            {renderActiveTabContent()}
+
+            {content.audio_path && (
+              <Box sx={{ mt: 4, textAlign: 'center' }}>
+                 <Typography variant="subtitle1" sx={{ mb:1, color: theme.palette.text.secondary}}>Listen to this lesson:</Typography>
+                <audio controls src={`http://localhost:5000${content.audio_path}`} style={{ width: '100%', maxWidth: '500px'}}>
+                  Your browser does not support the audio element.
+                </audio>
+              </Box>
             )}
           </Box>
-        </Paper>
+        </Fade>
+      );
+    }
+    return null; // Should not be reached if logic is correct
+  };
+
+  // Conditional rendering based on currentPage
+  if (currentPage === 'dashboard') {
+    return <Dashboard onNavigateToChat={navigateToChat} />;
+  }
+
+  // Existing chat page content (now part of the 'chat' page view)
+  return (
+    <Container maxWidth="lg" sx={{ py: 4, bgcolor: alpha(theme.palette.background.default, 0.95) }}>
+      <Paper 
+        elevation={5} 
+        sx={{
+          p: { xs: 2, sm: 3, md: 4 },
+          borderRadius: 3,
+          bgcolor: theme.palette.background.paper,
+          boxShadow: `0 8px 32px 0 ${alpha(theme.palette.primary.main, 0.2)}`,
+        }}
+      >
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
+          <Typography 
+            variant="h2" 
+            component="h1" 
+            sx={{ 
+              fontWeight: 'bold', 
+              color: theme.palette.primary.main,
+              display: 'inline-flex',
+              alignItems: 'center'
+            }}
+          >
+            <SchoolIcon sx={{ fontSize: '2.8rem', mr: 1.5, color: theme.palette.secondary.main }} /> 
+            Personalized Learning Studio
+          </Typography>
+          <Button 
+            variant="outlined"
+            onClick={() => setCurrentPage('dashboard')}
+            sx={{ 
+              borderColor: theme.palette.primary.main,
+              color: theme.palette.primary.main,
+              '&:hover': {
+                backgroundColor: alpha(theme.palette.primary.main, 0.1)
+              }
+            }}
+          >
+            Back to Dashboard
+          </Button>
+        </Box>
+
+        <form onSubmit={handleSubmit}>
+          <Grid container spacing={2} alignItems="center">
+            <Grid item xs={12} md={pdfFile ? 6 : 8}>
+              <TextField
+                fullWidth
+                label="Enter a topic to learn..."
+                variant="outlined"
+                value={topic}
+                onChange={(e) => setTopic(e.target.value)}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: '8px',
+                  }
+                }}
+              />
+            </Grid>
+            <Grid item xs={12} md={pdfFile ? 3 : 2}>
+                <Button 
+                    fullWidth 
+                    component="label" 
+                    variant="outlined"
+                    sx={{ height: '56px', borderRadius: '8px' }}
+                >
+                    {pdfFile ? pdfFile.name : "Or Upload PDF"}
+                    <input type="file" hidden onChange={handleFileChange} accept=".pdf" />
+                </Button>
+            </Grid>
+            {pdfFile && (
+                 <Grid item xs={12} md={3}>
+                    <Button 
+                        fullWidth 
+                        variant="text" 
+                        onClick={() => {setPdfFile(null); document.querySelector('input[type="file"]').value = ''}}
+                        sx={{ height: '56px', borderRadius: '8px' }}
+                    >
+                        Clear PDF
+                    </Button>
+                </Grid>
+            )}
+             <Grid item xs={12} md={2}>
+              <TextField
+                select
+                fullWidth
+                label="Learn by"
+                value={learningPreference}
+                onChange={(e) => setLearningPreference(e.target.value)}
+                SelectProps={{ native: true }}
+                variant="outlined"
+                sx={{ height: '56px', borderRadius: '8px', '& .MuiSelect-select': {height: '100% !important', paddingTop:0, paddingBottom:0} }}
+              >
+                <option value="reading">Reading</option>
+                <option value="video">Video</option>
+              </TextField>
+            </Grid>
+            <Grid item xs={12} md={2}>
+              <Button 
+                type="submit" 
+                variant="contained" 
+                fullWidth 
+                disabled={loading || (!topic.trim() && !pdfFile)}
+                startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <LightbulbIcon />}
+                sx={{ 
+                  height: '56px', 
+                  borderRadius: '8px', 
+                  fontWeight: 'bold',
+                  fontSize: '1rem'
+                }}
+              >
+                {loading ? 'Teaching...' : 'Teach Me'}
+              </Button>
+            </Grid>
+          </Grid>
+        </form>
 
         {renderContent()}
-      </Container>
-    </Box>
+        
+      </Paper>
+    </Container>
   );
 }
 
