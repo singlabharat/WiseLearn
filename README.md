@@ -1,4 +1,4 @@
-# ChatSnap Learning
+# WiseLearn
 
 An interactive learning platform powered by Google's Gemini AI that provides detailed lessons on any topic, complete with relevant images and structured content.
 
